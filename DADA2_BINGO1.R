@@ -12,6 +12,7 @@ library(tidyverse)
 library(RColorBrewer)
 library(forcats)
 library(readxl)
+library(vegan)
 ##########
 
 ##### on terminal #### cp */*_R1.fastq.bz2 Reads ####
@@ -247,39 +248,7 @@ rt3 <- ggplot(rt2, aes(x = name, y = Abundance, fill = Family)) +
   guides(fill = guide_legend(ncol = 2))
 rt3
 
-
-#### ANOSIM - Rui ####
-physeq_sub3.rarefied = rarefy_even_depth(physeq_sub3, rngseed=1, sample.size=4493, replace = FALSE, trimOTUs = TRUE, verbose = TRUE) #5samples removed, 1414OTUs were removed
-
-physeq_sub3.rarefied_0.8 <- subset_samples(physeq_sub3.rarefied, Size == "particle attached")
-
-rarefied_0.8_16S_otu<-otu_table(physeq_sub3.rarefied_0.8)
-rarefied_0.8_16S_otu_transformed<-decostand(rarefied_0.8_16S_otu, method = "hellinger")
-rarefied_0.8_16S_otu_transformed<-rarefied_0.8_16S_otu_transformed[, colSums(rarefied_0.8_16S_otu_transformed)!=0]
-ncol(rarefied_0.8_16S_otu_transformed) 
-# calculate Bray-Curtis dissimilarity
-rarefied_0.8_16S_otu_dist<-vegdist(rarefied_0.8_16S_otu_transformed, method = "bray")
-rarefied_0.8_16S_otu_dist_clust<-hclust(rarefied_0.8_16S_otu_dist,method="average")
-plot(rarefied_0.8_16S_otu_dist_clust, ylab="rarefied_0.8_16S_otu dist.", hang=-1,cex = 0.7)
-
-rarefied_0.8_16S_otu_NMDS<-monoMDS(rarefied_0.8_16S_otu_dist, k=2, model = "hybrid")
-NMDS1 =rarefied_0.8_16S_otu_NMDS$points[,1]
-NMDS2 =rarefied_0.8_16S_otu_NMDS$points[,2]
-
-sample_data(physeq_sub3.rarefied_0.8)$Water_Mass_Fred <- factor(sample_data(physeq_sub3.rarefied_0.8)$Water_Mass_Fred, levels = c("STSW","SASW","PFSW","ASW",
-                                                                                                                                  "STSW/STUW","WW","ASLOW","STMW","AAIW",
-                                                                                                                                  "SICW","AAIW+RSOW","UCDW","LCDW/UCDW","LCDW","NADW",
-                                                                                                                                  "NADW/LCDW","AABW"))
-
-NMDS = data.frame(NMDS1 = NMDS1, NMDS2 = NMDS2, Water_Mass_Fred=sample_data(physeq_sub3.rarefied_0.8)$Water_Mass_Fred, ID=sample_data(physeq_sub3.rarefied_0.8)$Number,Shape=sample_data(physeq_sub3.rarefied_0.8)$Water_Mass_Fred, Label=sample_data(physeq_sub3.rarefied_0.8)$Number)
-head(NMDS)
-# global test
-anosim_filter <- anosim(rarefied_0.8_16S_otu_dist, NMDS$Water_Mass_Fred, permutations = 9999)
-anosim_filter #ANOSIM statistic R: 0.714, Significance: 1e-04 
-
-
-#### ANOSIM - BINGO1 #####
-library(vegan)
+#### NMDS + ANOSIM - BINGO1 #####
 
 #rarefy_even_depth downsamples/normalizes all samples to the same depth and prunes OTUs that disappear from all samples as a result
 physeq1.rarefied = rarefy_even_depth(ps,sample.size=min(sample_sums(ps)))
@@ -322,6 +291,5 @@ head(NMDS)
 
 # global test
 anosim_filter <- anosim(ps_otu_dist, NMDS$Treat, permutations = 9999, distance = "bray")
-anosim_filter #ANOSIM statistic R: 0.5185, Significance: 0.1
+anosim_filter #ANOSIM statistic R: 0.5455,  P- Significance: 0.023
 
-adonis2(data_bray ~ Depth, data = sampledf)
