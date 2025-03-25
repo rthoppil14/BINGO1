@@ -673,4 +673,101 @@ lm_1 <- rbind(c(1,2))
 grid.arrange(grobs = list(hp_1[[4]],
                           hp_2[[4]]),
              layout_matrix = lm_1)
+## Both siderophores combined 
+sid3 <- as.matrix(t(sid))
+sid3[is.na(sid3)] <- 0 
+
+## specific order
+mag_order <- c("MAG10_Pseudomonadaceae", "MAG9_Pseudomonadaceae", 
+               "MAG11_Burkholderiaceae", "MAG6_Nitrincolaceae", 
+               "MAG7_Nitrincolaceae", "MAG8_Propionibacteriaceae", 
+               "MAG3_Marinomonadaceae", "MAG4_Marinomonadaceae", 
+               "MAG13_Vibrionaceae", "MAG5_Methylobacteriaceae")
+valid_mag_order <- mag_order[mag_order %in% rownames(sid3)]
+
+sid4 <- sid3[valid_mag_order, ]
+## display gene count numbers
+display_numbers3 <- ifelse(sid4 == 0, "", sid4)  # Set zero counts to NA
+## colours annotation for siderophore 
+col_annotation <- data.frame(
+  Siderophore = rep(c("Pyoverdine", "Vibrioferrin"), each = 2)  # Grouping MAGs by condition
+)
+rownames(col_annotation) <- colnames(sid4) 
+colors <- brewer.pal(5, "Set3")  # Get 3 colors from the Set2 palette
+mat_colors <- list(Siderophore = c(Pyoverdine = colors[3], Vibrioferrin = colors[4]))
+### map
+hp_3 <- pheatmap(sid4, 
+         cluster_rows = FALSE, cluster_cols = FALSE,
+         angle_col = 0,
+         #gaps_row = c(4), 
+         fontsize_row = 12, fontsize_col = 12, 
+         color = colorRampPalette(c("white", "#4292c6", "#2171b5" ,"#084594"))(30),
+         breaks = seq(0, 30, by = 1),   # Breaks from 0 to 25
+         legend_breaks = seq(0, 30, by = 5),
+         border_color = "black",
+         display_numbers = display_numbers3,  
+         number_format = "%d", fontsize_number = 10 ,number_color = "black",
+         annotation_col = col_annotation, 
+         annotation_names_col = FALSE,
+        annotation_colors = mat_colors)
+
+
+grid.text("Gene counts", 
+          x = 0.94, y = 0.85,  # Adjust position
+          rot = 270,            # Rotate 90 degrees
+          gp = gpar(fontsize = 12, fontface = "bold"))## save file
+ggsave(
+  filename = "~/Desktop/BINGO1/MAGs/Plots/MAG_fe.png", # File name
+  plot = hp_3,                           # Plot object
+  width = 12,                          # Width in inches
+  height = 8,                         # Height in inches
+  dpi = 600                           # Resolution in dots per inch
+)
+
+##### MAGs relative abundance ####
+mean1 <- read_excel("~/Desktop/BINGO1/MAGs/anvio_bins_dastool/bins_across_samples/mean_coverage.xlsx", sheet = "Sheet1")
+# Define the number of colors you want
+nb.cols <- 10
+mycolors <- colorRampPalette(brewer.pal(12, "Paired"))(nb.cols)
+mean1$Type <- as.factor(mean1$Type)
+# Melt the data
+mean2 <- melt(mean1, id.vars = c("ID", "Type"), 
+              variable.name = "Sample", 
+              value.name = "Abundance")
+mean2 <- mean2[-c(1:15), ]
+colnames(mean2)[1] <- "MAG"
+mean2$Abundance <- as.numeric(mean2$Abundance)
+
+# Assigning samples to groups based on whether they contain "glacial" or "non-glacial"
+mean2$Group <- ifelse(grepl("Glacial", mean2$Sample), "Glacial",
+                      ifelse(grepl("Non", mean2$Sample), "Non-glacial", "Unknown Group"))
+
+mean3 <- ggplot(mean2, aes(x = Sample, y = Abundance, fill = MAG)) + 
+  geom_bar(position = "stack", stat = "identity")+
+  theme_bw() + 
+  scale_fill_manual(values = mycolors) +
+  scale_x_discrete(labels = c("Glacial_A" = "A", "Glacial_B" = "B", "Glacial_C" = "C",
+                              "Non_glacialA" = "A", "Non_glacialB" = "B", "Non_glacialC" = "C")) +
+  facet_wrap(~Group, ncol = 2, dir = "v", scales = "free_x") +
+  theme(
+    strip.text.x = element_text(size = 15, color = "black", face = "bold"),
+    strip.text.y = element_text(size = 15, color = "black", face = "bold"),
+    strip.background = element_rect(color="black", fill="white", linewidth=2, linetype="solid")) +
+  theme(text = element_text(size = 15, color = "black"), 
+        axis.text.x = element_text(size = 15, face = "bold") , 
+        axis.text.y = element_text(size = 15, face = "plain")) +
+  guides(fill = guide_legend(reverse = TRUE, keywidth = 1, keyheight = 1)) +  
+  ylab("Relative Abundance of MAGs \n") + 
+  theme(plot.title = element_text(hjust = 0.5)) + 
+  guides(fill = guide_legend(ncol = 1))
+mean3
+
+## save file
+ggsave(
+  filename = "~/Desktop/BINGO1/MAGs/Plots/MAG_abundance.png", # File name
+  plot = mean3,                           # Plot object
+  width = 10,                          # Width in inches
+  height = 6,                         # Height in inches
+  dpi = 300                           # Resolution in dots per inch
+)
 
